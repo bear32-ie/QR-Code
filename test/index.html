@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Redirect</title>
+  <script>
+    // Your store URLs
+    const IOS_STORE   = "https://apps.apple.com/us/app/workday/id316800034";
+    const ANDROID_STORE = "https://play.google.com/store/search?q=Workday&c=apps";
+
+    function redirectToStore() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+      if (/android/i.test(ua)) {
+        window.location = ANDROID_STORE;
+      } else {
+        window.location = IOS_STORE;
+      }
+    }
+
+    function tryOpenApp() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+
+      // Time (ms) to wait before assuming the app isn't installed
+      const fallbackDelay = 1500;
+      let didSwitch = false;
+
+      // Set up fallback
+      const fallbackTimeout = setTimeout(() => {
+        if (!didSwitch) redirectToStore();
+      }, fallbackDelay);
+
+      // If on iOS and you have Universal Links configured
+      if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+        // This must match a Universal Link you’ve set up in your app’s apple-app-site-association
+        window.location = "https://yourdomain.com/app/link";  
+      }
+      // Otherwise, try a custom URL scheme (if your app supports it)
+      // E.g., workday://  – replace with your actual scheme
+      else if (/android/i.test(ua)) {
+        // Android: try Intent URL to trigger app, with fallback
+        window.location = "intent://open#Intent;scheme=workday;package=com.workday.workday;end";
+      } else {
+        // Desktop or unknown: go straight to store
+        clearTimeout(fallbackTimeout);
+        redirectToStore();
+        return;
+      }
+
+      // If the app _does_ open, the page will be hidden/unloaded
+      window.addEventListener("pagehide", () => {
+        didSwitch = true;
+        clearTimeout(fallbackTimeout);
+      });
+      window.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          didSwitch = true;
+          clearTimeout(fallbackTimeout);
+        }
+      });
+    }
+
+    // Kick it off as soon as we're loaded
+    window.onload = tryOpenApp;
+  </script>
+</head>
+<body>
+  <p>Checking for your app... if nothing happens, we’ll take you to the store.</p>
+</body>
+</html>
